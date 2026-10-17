@@ -237,4 +237,35 @@ class AppData extends ChangeNotifier {
   int laySoLuongNhanVienTheoChucVu(String chucVuId) {
     return _phanCong.values.where((cvId) => cvId == chucVuId).length;
   }
+
+  // =================== CÀI ĐẶT GIAO DIỆN (SETTINGS) ===================
+  bool _isDarkMode = false;
+  Color _primaryColor = Colors.indigo;
+  double _fontSizeScale = 1.0;
+
+  bool get isDarkMode => _isDarkMode;
+  Color get primaryColor => _primaryColor;
+  double get fontSizeScale => _fontSizeScale;
+
+  void setDarkMode(bool value) {
+    _isDarkMode = value;
+    notifyListeners();
+  }
+
+  void setPrimaryColor(Color color) {
+    _primaryColor = color;
+    notifyListeners();
+  }
+
+  void setFontSizeScale(double scale) {
+    _fontSizeScale = scale;
+    notifyListeners();
+  }
+
+  void resetSettings() {
+    _isDarkMode = false;
+    _primaryColor = Colors.indigo;
+    _fontSizeScale = 1.0;
+    notifyListeners();
+  }
 }

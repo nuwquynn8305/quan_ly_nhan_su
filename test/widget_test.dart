@@ -102,4 +102,50 @@ void main() {
     expect(appData.phanCong.containsKey('NV02'), false);
     expect(appData.danhSachNhanVien.any((nv) => nv.id == 'NV02'), false);
   });
+
+  testWidgets('Settings: Switch dark mode, chọn màu CircleAvatar, Slider cỡ chữ', (tester) async {
+    final appData = AppData();
+    await tester.pumpWidget(createWidgetUnderTest(appData: appData));
+    await tester.pumpAndSettle();
+
+    // Chuyển sang Tab Cài đặt (Tab 5)
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cài đặt Giao diện'), findsOneWidget);
+    expect(find.text('Chế độ nền tối (Dark Mode)'), findsOneWidget);
+    expect(find.text('Màu sắc chủ đạo'), findsOneWidget);
+    expect(find.text('Kích thước chữ'), findsOneWidget);
+
+    // 1. Thử bật Switch Dark mode
+    expect(appData.isDarkMode, false);
+    await tester.tap(find.byType(Switch));
+    await tester.pumpAndSettle();
+    expect(appData.isDarkMode, true);
+
+    // 2. Thử chọn màu sắc (ví dụ: Xanh lá)
+    expect(find.text('Xanh lá'), findsOneWidget);
+    await tester.tap(find.text('Xanh lá'));
+    await tester.pumpAndSettle();
+    expect(appData.primaryColor, Colors.green);
+
+    // 3. Thử điều chỉnh Slider cỡ chữ
+    final sliderFinder = find.byType(Slider);
+    expect(sliderFinder, findsOneWidget);
+    await tester.tap(sliderFinder);
+    await tester.pumpAndSettle();
+
+    // 4. Cuộn xuống và bấm nút Khôi phục cài đặt mặc định
+    await tester.drag(find.byType(ListView).last, const Offset(0, -400));
+    await tester.pumpAndSettle();
+
+    final resetButton = find.text('Khôi phục cài đặt mặc định');
+    expect(resetButton, findsOneWidget);
+    await tester.tap(resetButton);
+    await tester.pumpAndSettle();
+
+    expect(appData.isDarkMode, false);
+    expect(appData.primaryColor, Colors.indigo);
+    expect(appData.fontSizeScale, 1.0);
+  });
 }

@@ -22,13 +22,36 @@ class QuanLyNhanSuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appData = context.watch<AppData>();
+
     return MaterialApp(
       title: 'Quản Lý Nhân Sự',
       debugShowCheckedModeBanner: false,
+      themeMode: appData.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        brightness: Brightness.light,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: appData.primaryColor,
+          brightness: Brightness.light,
+        ),
       ),
+      darkTheme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: appData.primaryColor,
+          brightness: Brightness.dark,
+        ),
+      ),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaler: TextScaler.linear(appData.fontSizeScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       home: const MainNavigationScreen(),
     );
   }
