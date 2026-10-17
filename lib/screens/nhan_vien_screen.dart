@@ -1,8 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_data.dart';
 import '../models/nhan_vien.dart';
+
+enum SortOption {
+  nameAsc('Tên (A → Z)'),
+  nameDesc('Tên (Z → A)'),
+  birthYearAsc('Năm sinh (Lớn tuổi → Trẻ)'),
+  birthYearDesc('Năm sinh (Trẻ → Lớn tuổi)'),
+  salaryDesc('Lương (Cao → Thấp)'),
+  salaryAsc('Lương (Thấp → Cao)');
+
+  final String label;
+  const SortOption(this.label);
+}
 
 class NhanVienScreen extends StatefulWidget {
   const NhanVienScreen({super.key});
@@ -15,18 +28,38 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchKeyword = '';
 
+  // Bộ lọc
+  String _filterGender = 'Tất cả';
+  String _filterEducation = 'Tất cả';
+  String _filterPosition = 'Tất cả';
+
+  // Sắp xếp
+  SortOption _currentSort = SortOption.nameAsc;
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  // Định dạng ngày hiển thị dd/MM/yyyy
   String _formatDate(DateTime date) {
     final d = date.day.toString().padLeft(2, '0');
     final m = date.month.toString().padLeft(2, '0');
     final y = date.year.toString();
     return '$d/$m/$y';
+  }
+
+  String _formatCurrency(double amount) {
+    final intAmount = amount.round();
+    final str = intAmount.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} đ';
   }
 
   // Hộp thoại xác nhận xóa nhân viên
@@ -71,13 +104,238 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
     );
   }
 
+  // Xuất file CSV
+  void _showExportCsvDialog(BuildContext context) {
+    final appData = context.read<AppData>();
+    final csvContent = appData.xuatDanhSachCSV();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.table_chart_outlined, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('Xuất Danh Sách CSV'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dữ liệu bảng tính chuẩn UTF-8 (hỗ trợ hiển thị tiếng Việt trên Excel):',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    csvContent,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.copy),
+            label: const Text('Sao chép CSV'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: csvContent));
+              if (ctx.mounted) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đã sao chép nội dung CSV vào bộ nhớ tạm (Clipboard)!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Mở BottomSheet Bộ lọc và Sắp xếp
+  void _openFilterSortSheet(BuildContext context, AppData appData) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Bộ lọc & Sắp xếp',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _filterGender = 'Tất cả';
+                            _filterEducation = 'Tất cả';
+                            _filterPosition = 'Tất cả';
+                            _currentSort = SortOption.nameAsc;
+                          });
+                          Navigator.of(ctx).pop();
+                        },
+                        child: const Text('Đặt lại'),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+
+                  // Sắp xếp
+                  const Text('Sắp xếp danh sách theo:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: SortOption.values.map((opt) {
+                      final isSelected = _currentSort == opt;
+                      return ChoiceChip(
+                        label: Text(opt.label),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() => _currentSort = opt);
+                          setState(() => _currentSort = opt);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Lọc theo Giới tính
+                  const Text('Lọc theo Giới tính:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    children: ['Tất cả', 'Nam', 'Nữ', 'Khác'].map((g) {
+                      final isSelected = _filterGender == g;
+                      return ChoiceChip(
+                        label: Text(g),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() => _filterGender = g);
+                          setState(() => _filterGender = g);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Lọc theo Trình độ
+                  const Text('Lọc theo Trình độ:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      'Tất cả',
+                      'Đại học',
+                      'Cao đẳng',
+                      'Thạc sĩ',
+                      'Tiến sĩ',
+                      'Trung cấp',
+                    ].map((edu) {
+                      final isSelected = _filterEducation == edu;
+                      return ChoiceChip(
+                        label: Text(edu),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() => _filterEducation = edu);
+                          setState(() => _filterEducation = edu);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Lọc theo Chức vụ
+                  const Text('Lọc theo Chức vụ:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      'Tất cả',
+                      'Chưa có chức vụ',
+                      ...appData.danhSachChucVu.map((cv) => cv.tenChucVu),
+                    ].map((pos) {
+                      final isSelected = _filterPosition == pos;
+                      return ChoiceChip(
+                        label: Text(pos),
+                        selected: isSelected,
+                        onSelected: (val) {
+                          setSheetState(() => _filterPosition = pos);
+                          setState(() => _filterPosition = pos);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Áp dụng bộ lọc', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
     final allEmployees = appData.danhSachNhanVien;
 
-    // Lọc theo từ khóa tìm kiếm (theo tên hoặc mã)
-    final filteredEmployees = allEmployees.where((nv) {
+    // 1. Lọc theo từ khóa tìm kiếm (tên / mã)
+    var list = allEmployees.where((nv) {
       final query = _searchKeyword.trim().toLowerCase();
       if (query.isEmpty) return true;
       final matchName = nv.hoTen.toLowerCase().contains(query);
@@ -85,10 +343,74 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
       return matchName || matchId;
     }).toList();
 
+    // 2. Lọc theo Giới tính
+    if (_filterGender != 'Tất cả') {
+      list = list.where((nv) => nv.gioiTinh == _filterGender).toList();
+    }
+
+    // 3. Lọc theo Trình độ
+    if (_filterEducation != 'Tất cả') {
+      list = list.where((nv) => nv.trinhDo == _filterEducation).toList();
+    }
+
+    // 4. Lọc theo Chức vụ
+    if (_filterPosition != 'Tất cả') {
+      if (_filterPosition == 'Chưa có chức vụ') {
+        list = list.where((nv) => nv.maChucVu == null).toList();
+      } else {
+        list = list.where((nv) {
+          final cv = appData.getChucVuById(nv.maChucVu);
+          return cv?.tenChucVu == _filterPosition;
+        }).toList();
+      }
+    }
+
+    // 5. Sắp xếp danh sách
+    switch (_currentSort) {
+      case SortOption.nameAsc:
+        list.sort((a, b) => a.hoTen.compareTo(b.hoTen));
+        break;
+      case SortOption.nameDesc:
+        list.sort((a, b) => b.hoTen.compareTo(a.hoTen));
+        break;
+      case SortOption.birthYearAsc:
+        list.sort((a, b) => a.ngaySinh.compareTo(b.ngaySinh));
+        break;
+      case SortOption.birthYearDesc:
+        list.sort((a, b) => b.ngaySinh.compareTo(a.ngaySinh));
+        break;
+      case SortOption.salaryDesc:
+        list.sort((a, b) => appData.tinhLuongNhanVien(b).compareTo(appData.tinhLuongNhanVien(a)));
+        break;
+      case SortOption.salaryAsc:
+        list.sort((a, b) => appData.tinhLuongNhanVien(a).compareTo(appData.tinhLuongNhanVien(b)));
+        break;
+    }
+
+    final hasActiveFilter = _filterGender != 'Tất cả' ||
+        _filterEducation != 'Tất cả' ||
+        _filterPosition != 'Tất cả' ||
+        _currentSort != SortOption.nameAsc;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quản lý Nhân viên'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Xuất CSV',
+            onPressed: () => _showExportCsvDialog(context),
+          ),
+          IconButton(
+            icon: Badge(
+              isLabelVisible: hasActiveFilter,
+              child: const Icon(Icons.filter_list),
+            ),
+            tooltip: 'Bộ lọc & Sắp xếp',
+            onPressed: () => _openFilterSortSheet(context, appData),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openEmployeeForm(context),
@@ -97,13 +419,13 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
       ),
       body: Column(
         children: [
-          // Ô Tìm kiếm theo tên / mã nhân viên
+          // Ô Tìm kiếm
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Tìm kiếm theo tên hoặc mã nhân viên...',
+                hintText: 'Tìm theo tên hoặc mã nhân viên...',
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchKeyword.isNotEmpty
                     ? IconButton(
@@ -132,7 +454,54 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
             ),
           ),
 
-          // Thanh hiển thị số lượng
+          // Thanh hiển thị các filter đang áp dụng (nếu có)
+          if (hasActiveFilter)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  if (_currentSort != SortOption.nameAsc)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Chip(
+                        avatar: const Icon(Icons.sort, size: 14),
+                        label: Text(_currentSort.label, style: const TextStyle(fontSize: 11)),
+                        onDeleted: () => setState(() => _currentSort = SortOption.nameAsc),
+                      ),
+                    ),
+                  if (_filterGender != 'Tất cả')
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Chip(
+                        avatar: const Icon(Icons.wc, size: 14),
+                        label: Text('Giới tính: $_filterGender', style: const TextStyle(fontSize: 11)),
+                        onDeleted: () => setState(() => _filterGender = 'Tất cả'),
+                      ),
+                    ),
+                  if (_filterEducation != 'Tất cả')
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Chip(
+                        avatar: const Icon(Icons.school, size: 14),
+                        label: Text('Trình độ: $_filterEducation', style: const TextStyle(fontSize: 11)),
+                        onDeleted: () => setState(() => _filterEducation = 'Tất cả'),
+                      ),
+                    ),
+                  if (_filterPosition != 'Tất cả')
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: Chip(
+                        avatar: const Icon(Icons.work, size: 14),
+                        label: Text('CV: $_filterPosition', style: const TextStyle(fontSize: 11)),
+                        onDeleted: () => setState(() => _filterPosition = 'Tất cả'),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+          // Thanh thống kê số lượng
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             child: Row(
@@ -142,49 +511,43 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
                   'Tổng số nhân viên: ${allEmployees.length}',
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
-                if (_searchKeyword.isNotEmpty)
-                  Text(
-                    'Kết quả: ${filteredEmployees.length}',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.bold,
-                    ),
+                Text(
+                  'Hiển thị: ${list.length}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
                   ),
+                ),
               ],
             ),
           ),
           const Divider(height: 1),
 
-          // Danh sách nhân viên ListView.builder (Card + ListTile)
+          // Danh sách nhân viên ListView.builder
           Expanded(
-            child: filteredEmployees.isEmpty
+            child: list.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          _searchKeyword.isEmpty
-                              ? Icons.people_outline
-                              : Icons.person_search_outlined,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
+                        const Icon(Icons.person_search_outlined, size: 64, color: Colors.grey),
                         const SizedBox(height: 12),
                         Text(
-                          _searchKeyword.isEmpty
-                              ? 'Chưa có nhân viên nào trong danh sách'
-                              : 'Không tìm thấy nhân viên phù hợp với "$_searchKeyword"',
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          _searchKeyword.isNotEmpty || hasActiveFilter
+                              ? 'Không tìm thấy nhân viên phù hợp bộ lọc'
+                              : 'Chưa có nhân viên nào trong danh sách',
+                          style: const TextStyle(fontSize: 15, color: Colors.grey),
                         ),
                       ],
                     ),
                   )
                 : ListView.builder(
-                    itemCount: filteredEmployees.length,
+                    itemCount: list.length,
                     padding: const EdgeInsets.only(left: 12, right: 12, top: 8, bottom: 80),
                     itemBuilder: (context, index) {
-                      final nv = filteredEmployees[index];
+                      final nv = list[index];
                       final chucVu = appData.getChucVuById(nv.maChucVu);
+                      final salary = appData.tinhLuongNhanVien(nv);
 
                       return Dismissible(
                         key: ValueKey(nv.id),
@@ -333,6 +696,21 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
                                       const Icon(Icons.phone_outlined, size: 14, color: Colors.grey),
                                       const SizedBox(width: 4),
                                       Text(nv.soDienThoai),
+                                    ],
+                                  ),
+                                  // Hiển thị lương tính toán
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.monetization_on_outlined, size: 14, color: Colors.green),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Lương: ${_formatCurrency(salary)}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -563,7 +941,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Tiêu đề dialog
+                // Header
                 Row(
                   children: [
                     Icon(
@@ -634,7 +1012,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                 ),
                 const SizedBox(height: 14),
 
-                // 3. Dropdown Giới tính & Trình độ (Row 2 cột)
+                // 3. Dropdown Giới tính & Trình độ
                 Row(
                   children: [
                     Expanded(
@@ -678,7 +1056,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                 ),
                 const SizedBox(height: 14),
 
-                // 4. Ngày sinh (kết hợp date picker & validate năm sinh 1950 - hiện tại - 18)
+                // 4. Ngày sinh
                 TextFormField(
                   controller: _birthDateController,
                   readOnly: true,
@@ -754,7 +1132,7 @@ class _EmployeeFormDialogState extends State<EmployeeFormDialog> {
                 ),
                 const SizedBox(height: 14),
 
-                // 6. Chức vụ (tùy chọn)
+                // 6. Chức vụ
                 DropdownButtonFormField<String?>(
                   initialValue: _selectedPositionId,
                   decoration: const InputDecoration(

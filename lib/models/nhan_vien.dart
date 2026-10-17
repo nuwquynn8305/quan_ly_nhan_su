@@ -40,4 +40,30 @@ class NhanVien {
       maChucVu: maChucVu ?? this.maChucVu,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'hoTen': hoTen,
+      'email': email,
+      'soDienThoai': soDienThoai,
+      'gioiTinh': gioiTinh,
+      'ngaySinh': ngaySinh.toIso8601String(),
+      'trinhDo': trinhDo,
+      'maChucVu': maChucVu,
+    };
+  }
+
+  factory NhanVien.fromJson(Map<String, dynamic> json) {
+    return NhanVien(
+      id: json['id'] as String,
+      hoTen: json['hoTen'] as String,
+      email: json['email'] as String,
+      soDienThoai: json['soDienThoai'] as String,
+      gioiTinh: json['gioiTinh'] as String,
+      ngaySinh: DateTime.parse(json['ngaySinh'] as String),
+      trinhDo: json['trinhDo'] as String? ?? 'Đại học',
+      maChucVu: json['maChucVu'] as String?,
+    );
+  }
 }

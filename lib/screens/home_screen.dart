@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../models/app_data.dart';
@@ -6,58 +7,171 @@ import '../models/app_data.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
+  String _formatCurrency(double amount) {
+    final intAmount = amount.round();
+    final str = intAmount.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} đ';
+  }
+
+  void _showExportCsvDialog(BuildContext context) {
+    final appData = context.read<AppData>();
+    final csvContent = appData.xuatDanhSachCSV();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.table_chart_outlined, color: Colors.teal),
+            SizedBox(width: 8),
+            Text('Xuất Danh Sách CSV'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dữ liệu bảng tính chuẩn UTF-8 (hỗ trợ hiển thị tiếng Việt trên Excel):',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: SingleChildScrollView(
+                  child: SelectableText(
+                    csvContent,
+                    style: const TextStyle(fontFamily: 'monospace', fontSize: 11),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.copy),
+            label: const Text('Sao chép CSV'),
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: csvContent));
+              if (ctx.mounted) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đã sao chép nội dung CSV vào bộ nhớ tạm (Clipboard)!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appData = context.watch<AppData>();
 
-    // Lấy số liệu trực tiếp từ .length của các Map theo đúng yêu cầu
     final totalEmployees = appData.mapNhanVien.length;
     final totalPositions = appData.mapChucVu.length;
     final totalAssigned = appData.phanCong.length;
     final totalUnassigned = totalEmployees >= totalAssigned ? totalEmployees - totalAssigned : 0;
     final assignRate = totalEmployees > 0 ? (totalAssigned / totalEmployees) : 0.0;
+    final totalPayroll = appData.tinhTongQuyLuong();
 
     final statByPosition = appData.mapThongKeChucVu;
+    final statByGender = appData.mapThongKeGioiTinh;
+
+    final maleCount = statByGender['Nam'] ?? 0;
+    final femaleCount = statByGender['Nữ'] ?? 0;
+    final otherCount = statByGender['Khác'] ?? 0;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tổng Quan Nhân Sự (Dashboard)'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            tooltip: 'Xuất báo cáo CSV',
+            onPressed: () => _showExportCsvDialog(context),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Tiêu đề chào mừng
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                  radius: 24,
-                  child: Icon(
-                    Icons.dashboard_customize_rounded,
-                    color: Theme.of(context).colorScheme.primary,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            // Tiêu đề & Quỹ lương
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              color: Theme.of(context).colorScheme.primaryContainer.withAlpha(90),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
                   children: [
-                    Text(
-                      'Hệ Thống Quản Lý',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    CircleAvatar(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      radius: 26,
+                      child: const Icon(
+                        Icons.account_balance_wallet,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
-                    Text(
-                      'Thống kê số liệu nhân sự thời gian thực',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Tổng Quỹ Lương Dự Tính (Tháng)',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatCurrency(totalPayroll),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // 4 Thẻ thống kê lấy từ .length của các Map
             GridView.count(
@@ -68,7 +182,6 @@ class HomeScreen extends StatelessWidget {
               mainAxisSpacing: 12,
               childAspectRatio: 1.45,
               children: [
-                // Thẻ 1: Tổng Nhân Viên
                 _buildStatCard(
                   context,
                   title: 'Tổng Nhân Viên',
@@ -77,7 +190,6 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.people_alt,
                   color: Colors.blue,
                 ),
-                // Thẻ 2: Tổng Chức Vụ
                 _buildStatCard(
                   context,
                   title: 'Tổng Chức Vụ',
@@ -86,7 +198,6 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.badge,
                   color: Colors.purple,
                 ),
-                // Thẻ 3: Đã Phân Công
                 _buildStatCard(
                   context,
                   title: 'Đã Phân Công',
@@ -95,7 +206,6 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.check_circle_outline,
                   color: Colors.green,
                 ),
-                // Thẻ 4: Chưa Phân Công
                 _buildStatCard(
                   context,
                   title: 'Chưa Phân Công',
@@ -108,7 +218,7 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Card Tiến độ phân công
+            // Tiến độ phân công
             Card(
               elevation: 1.5,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -159,81 +269,171 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
-            // Phân bổ nhân sự theo từng chức vụ
+            // BIỂU ĐỒ 1: Biểu đồ phân bổ Giới Tính
             Row(
               children: [
-                Icon(Icons.pie_chart_outline, size: 20, color: Colors.indigo.shade700),
+                Icon(Icons.pie_chart, size: 20, color: Colors.purple.shade700),
                 const SizedBox(width: 8),
                 const Text(
-                  'Phân bổ nhân sự theo chức vụ',
+                  'Biểu đồ phân bổ theo Giới tính',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ],
             ),
             const SizedBox(height: 10),
 
-            if (appData.danhSachChucVu.isEmpty)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('Chưa có chức vụ nào được tạo.', style: TextStyle(color: Colors.grey)),
-                ),
-              )
-            else
-              Card(
-                elevation: 1.5,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: appData.danhSachChucVu.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final cv = appData.danhSachChucVu[index];
-                    final count = statByPosition[cv.id] ?? 0;
-                    final ratio = totalEmployees > 0 ? (count / totalEmployees) : 0.0;
+            Card(
+              elevation: 1.5,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Thanh tỷ lệ ngang (Stacked bar)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: SizedBox(
+                        height: 20,
+                        child: totalEmployees == 0
+                            ? Container(color: Colors.grey.shade300)
+                            : Row(
+                                children: [
+                                  if (maleCount > 0)
+                                    Expanded(
+                                      flex: maleCount,
+                                      child: Container(color: Colors.blue.shade600),
+                                    ),
+                                  if (femaleCount > 0)
+                                    Expanded(
+                                      flex: femaleCount,
+                                      child: Container(color: Colors.pink.shade400),
+                                    ),
+                                  if (otherCount > 0)
+                                    Expanded(
+                                      flex: otherCount,
+                                      child: Container(color: Colors.teal.shade400),
+                                    ),
+                                ],
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.indigo.shade50,
-                        child: Text(
-                          cv.id,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.indigo.shade800,
-                          ),
+                    // Chú giải số liệu
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildGenderLegend(
+                          label: 'Nam',
+                          count: maleCount,
+                          total: totalEmployees,
+                          color: Colors.blue.shade600,
                         ),
-                      ),
-                      title: Text(
-                        cv.tenChucVu,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text('Hệ số lương: ${cv.heSoLuong} | Tỷ lệ: ${(ratio * 100).toStringAsFixed(0)}%'),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: count > 0 ? Colors.blue.shade50 : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: count > 0 ? Colors.blue.shade300 : Colors.grey.shade300,
-                          ),
+                        _buildGenderLegend(
+                          label: 'Nữ',
+                          count: femaleCount,
+                          total: totalEmployees,
+                          color: Colors.pink.shade400,
                         ),
-                        child: Text(
-                          '$count NV',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: count > 0 ? Colors.blue.shade800 : Colors.grey.shade700,
-                          ),
+                        _buildGenderLegend(
+                          label: 'Khác',
+                          count: otherCount,
+                          total: totalEmployees,
+                          color: Colors.teal.shade400,
                         ),
-                      ),
-                    );
-                  },
+                      ],
+                    ),
+                  ],
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+
+            // BIỂU ĐỒ 2: Biểu đồ cột Nhân Viên theo Chức Vụ
+            Row(
+              children: [
+                Icon(Icons.bar_chart, size: 20, color: Colors.indigo.shade700),
+                const SizedBox(width: 8),
+                const Text(
+                  'Biểu đồ số NV theo Chức vụ',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            Card(
+              elevation: 1.5,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: appData.danhSachChucVu.map((cv) {
+                    final count = statByPosition[cv.id] ?? 0;
+                    final maxEmp = totalEmployees > 0 ? totalEmployees : 1;
+                    final ratio = count / maxEmp;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                cv.tenChucVu,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              Text(
+                                '$count NV (${(ratio * 100).toStringAsFixed(0)}%)',
+                                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: ratio,
+                              minHeight: 12,
+                              backgroundColor: Colors.grey.shade200,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGenderLegend({
+    required String label,
+    required int count,
+    required int total,
+    required Color color,
+  }) {
+    final pct = total > 0 ? (count / total * 100).toStringAsFixed(0) : '0';
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 6),
+        Text(
+          '$label: $count ($pct%)',
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+        ),
+      ],
     );
   }
 

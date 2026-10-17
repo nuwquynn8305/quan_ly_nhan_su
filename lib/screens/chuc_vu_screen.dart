@@ -21,7 +21,20 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
     super.dispose();
   }
 
-  // Hộp thoại xác nhận xóa chức vụ (có xử lý trường hợp có nhân viên đang giữ chức vụ)
+  String _formatCurrency(double amount) {
+    final intAmount = amount.round();
+    final str = intAmount.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(str[i]);
+    }
+    return '${buffer.toString()} đ';
+  }
+
+  // Hộp thoại xác nhận xóa chức vụ
   Future<bool?> _showDeleteConfirmation(BuildContext context, ChucVu cv) {
     final appData = context.read<AppData>();
     final assignedEmployees = appData.layDanhSachNhanVienTheoChucVu(cv.id);
@@ -118,7 +131,6 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
     final appData = context.watch<AppData>();
     final allPositions = appData.danhSachChucVu;
 
-    // Lọc theo từ khóa tìm kiếm (theo tên hoặc mã)
     final filteredPositions = allPositions.where((cv) {
       final query = _searchKeyword.trim().toLowerCase();
       if (query.isEmpty) return true;
@@ -139,7 +151,7 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
       ),
       body: Column(
         children: [
-          // Ô Tìm kiếm theo tên / mã chức vụ
+          // Ô Tìm kiếm
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
@@ -197,7 +209,7 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
           ),
           const Divider(height: 1),
 
-          // Danh sách chức vụ ListView.builder (Card + ListTile)
+          // Danh sách chức vụ ListView.builder
           Expanded(
             child: filteredPositions.isEmpty
                 ? Center(
@@ -332,18 +344,11 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(
-                                            Icons.trending_up,
-                                            size: 15,
-                                            color: Colors.green,
-                                          ),
+                                          const Icon(Icons.trending_up, size: 15, color: Colors.green),
                                           const SizedBox(width: 4),
                                           Text(
                                             'Hệ số: ${cv.heSoLuong.toStringAsFixed(1)}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.green,
-                                            ),
+                                            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.green),
                                           ),
                                         ],
                                       ),
@@ -353,34 +358,44 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
                                           Icon(
                                             Icons.people_outline,
                                             size: 15,
-                                            color: employeeCount > 0
-                                                ? Colors.blue.shade700
-                                                : Colors.grey,
+                                            color: employeeCount > 0 ? Colors.blue.shade700 : Colors.grey,
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            employeeCount > 0
-                                                ? '$employeeCount nhân viên đang giữ'
-                                                : 'Chưa có nhân viên',
+                                            employeeCount > 0 ? '$employeeCount nhân viên' : 'Chưa có NV',
                                             style: TextStyle(
                                               fontWeight: FontWeight.w500,
-                                              color: employeeCount > 0
-                                                  ? Colors.blue.shade700
-                                                  : Colors.grey,
+                                              color: employeeCount > 0 ? Colors.blue.shade700 : Colors.grey,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.payments_outlined, size: 15, color: Colors.amber),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Tổng lương: ${_formatCurrency(cv.tongLuong)}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.amber.shade900,
                                             ),
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Lương CB: ${_formatCurrency(cv.luongCoBan)} | Phụ cấp: ${_formatCurrency(cv.phuCap)}',
+                                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  ),
                                   if (cv.moTa.isNotEmpty) ...[
                                     const SizedBox(height: 4),
                                     Text(
                                       cv.moTa,
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 13,
-                                      ),
+                                      style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -442,6 +457,8 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
   late TextEditingController _idController;
   late TextEditingController _nameController;
   late TextEditingController _salaryFactorController;
+  late TextEditingController _baseSalaryController;
+  late TextEditingController _allowanceController;
   late TextEditingController _descriptionController;
 
   bool get isEditing => widget.position != null;
@@ -455,6 +472,12 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
     _salaryFactorController = TextEditingController(
       text: pos != null ? pos.heSoLuong.toString() : '1.0',
     );
+    _baseSalaryController = TextEditingController(
+      text: pos != null ? pos.luongCoBan.round().toString() : '5000000',
+    );
+    _allowanceController = TextEditingController(
+      text: pos != null ? pos.phuCap.round().toString() : '1000000',
+    );
     _descriptionController = TextEditingController(text: pos?.moTa ?? '');
   }
 
@@ -463,6 +486,8 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
     _idController.dispose();
     _nameController.dispose();
     _salaryFactorController.dispose();
+    _baseSalaryController.dispose();
+    _allowanceController.dispose();
     _descriptionController.dispose();
     super.dispose();
   }
@@ -476,12 +501,16 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
     final id = _idController.text.trim().toUpperCase();
     final name = _nameController.text.trim();
     final factor = double.tryParse(_salaryFactorController.text.trim()) ?? 1.0;
+    final baseSalary = double.tryParse(_baseSalaryController.text.trim()) ?? 5000000.0;
+    final allowance = double.tryParse(_allowanceController.text.trim()) ?? 1000000.0;
     final description = _descriptionController.text.trim();
 
     if (isEditing) {
       final updatedPos = widget.position!.copyWith(
         tenChucVu: name,
         heSoLuong: factor,
+        luongCoBan: baseSalary,
+        phuCap: allowance,
         moTa: description,
       );
       appData.capNhatChucVu(updatedPos);
@@ -493,6 +522,8 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
         id: id,
         tenChucVu: name,
         heSoLuong: factor,
+        luongCoBan: baseSalary,
+        phuCap: allowance,
         moTa: description,
       );
       final success = appData.themChucVu(newPos);
@@ -604,8 +635,8 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(
                     labelText: 'Hệ số lương *',
-                    hintText: 'VD: 2.0',
-                    prefixIcon: Icon(Icons.attach_money),
+                    hintText: 'VD: 2.5',
+                    prefixIcon: Icon(Icons.trending_up),
                     border: OutlineInputBorder(),
                   ),
                   validator: (value) {
@@ -621,10 +652,62 @@ class _PositionFormDialogState extends State<PositionFormDialog> {
                 ),
                 const SizedBox(height: 14),
 
-                // 4. Mô tả
+                // 4. Lương cơ bản & Phụ cấp (Row 2 cột)
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _baseSalaryController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Lương cơ bản (đ) *',
+                          hintText: 'VD: 5000000',
+                          prefixIcon: Icon(Icons.attach_money),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nhập lương cơ bản';
+                          }
+                          final s = double.tryParse(value.trim());
+                          if (s == null || s < 0) {
+                            return 'Lương không hợp lệ';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _allowanceController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Phụ cấp (đ) *',
+                          hintText: 'VD: 1000000',
+                          prefixIcon: Icon(Icons.card_giftcard),
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Nhập phụ cấp';
+                          }
+                          final a = double.tryParse(value.trim());
+                          if (a == null || a < 0) {
+                            return 'Phụ cấp không hợp lệ';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // 5. Mô tả
                 TextFormField(
                   controller: _descriptionController,
-                  maxLines: 3,
+                  maxLines: 2,
                   decoration: const InputDecoration(
                     labelText: 'Mô tả công việc',
                     hintText: 'Nhập tóm tắt vai trò, trách nhiệm của chức vụ...',
