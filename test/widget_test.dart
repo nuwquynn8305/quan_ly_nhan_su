@@ -5,9 +5,9 @@ import 'package:quan_ly_nhan_su/models/app_data.dart';
 import 'package:quan_ly_nhan_su/main.dart';
 
 void main() {
-  Widget createWidgetUnderTest() {
+  Widget createWidgetUnderTest({AppData? appData}) {
     return ChangeNotifierProvider(
-      create: (_) => AppData(),
+      create: (_) => appData ?? AppData(),
       child: const QuanLyNhanSuApp(),
     );
   }
@@ -63,5 +63,43 @@ void main() {
     // Số chức vụ còn 2
     expect(find.text('Tổng số chức vụ: 2'), findsOneWidget);
     expect(find.text('Giám đốc'), findsNothing);
+  });
+
+  testWidgets('Dashboard và Gán chức vụ, xóa NV xóa luôn bản ghi trong phanCong', (tester) async {
+    final appData = AppData();
+    await tester.pumpWidget(createWidgetUnderTest(appData: appData));
+    await tester.pumpAndSettle();
+
+    // 1. Kiểm tra Dashboard: Thẻ thống kê từ .length của các Map
+    expect(find.text('Tổng Quan Nhân Sự (Dashboard)'), findsOneWidget);
+    expect(find.text('Tổng Nhân Viên'), findsOneWidget);
+    expect(find.text('Tổng Chức Vụ'), findsOneWidget);
+    expect(find.text('Đã Phân Công'), findsOneWidget);
+    expect(find.text('Chưa Phân Công'), findsOneWidget);
+
+    // 2. Chuyển sang Tab Gán chức vụ
+    await tester.tap(find.byIcon(Icons.assignment_ind_outlined));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Gán Chức Vụ'), findsOneWidget);
+    expect(find.text('Phân công chức vụ cho nhân viên'), findsOneWidget);
+    expect(find.text('Gán'), findsOneWidget);
+    expect(find.text('Đã gán: 5/5'), findsOneWidget);
+
+    // Gỡ chức vụ của một nhân viên bằng nút gỡ nhanh
+    final removeAssignButtons = find.byIcon(Icons.person_remove_outlined);
+    expect(removeAssignButtons, findsWidgets);
+    await tester.tap(removeAssignButtons.first);
+    await tester.pumpAndSettle();
+
+    // Kiểm tra số lượng phân công giảm còn 4/5
+    expect(find.text('Đã gán: 4/5'), findsOneWidget);
+    expect(appData.phanCong.length, 4);
+
+    // 3. Kiểm tra: Khi xóa NV -> xóa luôn bản ghi trong phanCong
+    expect(appData.phanCong.containsKey('NV02'), true);
+    appData.xoaNhanVien('NV02');
+    expect(appData.phanCong.containsKey('NV02'), false);
+    expect(appData.danhSachNhanVien.any((nv) => nv.id == 'NV02'), false);
   });
 }
