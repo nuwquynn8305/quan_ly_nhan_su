@@ -34,6 +34,7 @@ class AppData extends ChangeNotifier {
       soDienThoai: '0901234567',
       gioiTinh: 'Nam',
       ngaySinh: DateTime(1988, 5, 12),
+      trinhDo: 'Thạc sĩ',
       maChucVu: 'CV01',
     ),
     NhanVien(
@@ -43,6 +44,7 @@ class AppData extends ChangeNotifier {
       soDienThoai: '0912345678',
       gioiTinh: 'Nữ',
       ngaySinh: DateTime(1992, 8, 20),
+      trinhDo: 'Đại học',
       maChucVu: 'CV02',
     ),
     NhanVien(
@@ -52,6 +54,7 @@ class AppData extends ChangeNotifier {
       soDienThoai: '0923456789',
       gioiTinh: 'Nam',
       ngaySinh: DateTime(1995, 3, 15),
+      trinhDo: 'Đại học',
       maChucVu: 'CV03',
     ),
     NhanVien(
@@ -61,6 +64,7 @@ class AppData extends ChangeNotifier {
       soDienThoai: '0934567890',
       gioiTinh: 'Nam',
       ngaySinh: DateTime(1997, 11, 28),
+      trinhDo: 'Cao đẳng',
       maChucVu: 'CV03',
     ),
     NhanVien(
@@ -70,6 +74,7 @@ class AppData extends ChangeNotifier {
       soDienThoai: '0945678901',
       gioiTinh: 'Nữ',
       ngaySinh: DateTime(1999, 7, 9),
+      trinhDo: 'Đại học',
       maChucVu: 'CV03',
     ),
   ];
@@ -84,6 +89,41 @@ class AppData extends ChangeNotifier {
     } catch (_) {
       return null;
     }
+  }
+
+  // Thêm nhân viên
+  bool themNhanVien(NhanVien nv) {
+    if (kiemTraTrungMa(nv.id)) {
+      return false;
+    }
+    _danhSachNhanVien.add(nv);
+    notifyListeners();
+    return true;
+  }
+
+  // Cập nhật nhân viên
+  bool capNhatNhanVien(NhanVien nv) {
+    final index = _danhSachNhanVien.indexWhere((item) => item.id == nv.id);
+    if (index != -1) {
+      _danhSachNhanVien[index] = nv;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  // Xóa nhân viên
+  void xoaNhanVien(String id) {
+    _danhSachNhanVien.removeWhere((item) => item.id == id);
+    notifyListeners();
+  }
+
+  // Kiểm tra trùng mã nhân viên
+  bool kiemTraTrungMa(String id, {String? excludeId}) {
+    final cleanId = id.trim().toUpperCase();
+    return _danhSachNhanVien.any(
+      (item) => item.id.toUpperCase() == cleanId && item.id != excludeId,
+    );
   }
 
   void ganChucVu(String maNhanVien, String? maChucVu) {
