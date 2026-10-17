@@ -91,7 +91,7 @@ class AppData extends ChangeNotifier {
     }
   }
 
-  // Thêm nhân viên
+  // =================== QUẢN LÝ NHÂN VIÊN ===================
   bool themNhanVien(NhanVien nv) {
     if (kiemTraTrungMa(nv.id)) {
       return false;
@@ -101,7 +101,6 @@ class AppData extends ChangeNotifier {
     return true;
   }
 
-  // Cập nhật nhân viên
   bool capNhatNhanVien(NhanVien nv) {
     final index = _danhSachNhanVien.indexWhere((item) => item.id == nv.id);
     if (index != -1) {
@@ -112,13 +111,11 @@ class AppData extends ChangeNotifier {
     return false;
   }
 
-  // Xóa nhân viên
   void xoaNhanVien(String id) {
     _danhSachNhanVien.removeWhere((item) => item.id == id);
     notifyListeners();
   }
 
-  // Kiểm tra trùng mã nhân viên
   bool kiemTraTrungMa(String id, {String? excludeId}) {
     final cleanId = id.trim().toUpperCase();
     return _danhSachNhanVien.any(
@@ -132,5 +129,53 @@ class AppData extends ChangeNotifier {
       _danhSachNhanVien[index].maChucVu = maChucVu;
       notifyListeners();
     }
+  }
+
+  // =================== QUẢN LÝ CHỨC VỤ ===================
+  bool themChucVu(ChucVu cv) {
+    if (kiemTraTrungMaChucVu(cv.id)) {
+      return false;
+    }
+    _danhSachChucVu.add(cv);
+    notifyListeners();
+    return true;
+  }
+
+  bool capNhatChucVu(ChucVu cv) {
+    final index = _danhSachChucVu.indexWhere((item) => item.id == cv.id);
+    if (index != -1) {
+      _danhSachChucVu[index] = cv;
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  // Xóa chức vụ: nếu có nhân viên thì gỡ chức vụ trước khi xóa
+  void xoaChucVu(String id, {bool goGanNhanVien = true}) {
+    if (goGanNhanVien) {
+      for (final nv in _danhSachNhanVien) {
+        if (nv.maChucVu == id) {
+          nv.maChucVu = null;
+        }
+      }
+    }
+    _danhSachChucVu.removeWhere((cv) => cv.id == id);
+    notifyListeners();
+  }
+
+  bool kiemTraTrungMaChucVu(String id, {String? excludeId}) {
+    final cleanId = id.trim().toUpperCase();
+    return _danhSachChucVu.any(
+      (item) => item.id.toUpperCase() == cleanId && item.id != excludeId,
+    );
+  }
+
+  List<NhanVien> layDanhSachNhanVienTheoChucVu(String chucVuId) {
+    return _danhSachNhanVien.where((nv) => nv.maChucVu == chucVuId).toList();
+  }
+
+  int laySoLuongNhanVienTheoChucVu(String chucVuId) {
+    return _danhSachNhanVien.where((nv) => nv.maChucVu == chucVuId).length;
   }
 }

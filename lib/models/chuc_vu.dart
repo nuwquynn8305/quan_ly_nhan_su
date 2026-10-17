@@ -10,4 +10,18 @@ class ChucVu {
     this.heSoLuong = 1.0,
     this.moTa = '',
   });
+
+  ChucVu copyWith({
+    String? id,
+    String? tenChucVu,
+    double? heSoLuong,
+    String? moTa,
+  }) {
+    return ChucVu(
+      id: id ?? this.id,
+      tenChucVu: tenChucVu ?? this.tenChucVu,
+      heSoLuong: heSoLuong ?? this.heSoLuong,
+      moTa: moTa ?? this.moTa,
+    );
+  }
 }
