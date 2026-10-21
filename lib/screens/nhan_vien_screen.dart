@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:universal_html/html.dart' as html;
 
 import '../models/app_data.dart';
 import '../models/nhan_vien.dart';
@@ -95,6 +97,20 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
     );
   }
 
+  void _downloadCSV(String csvContent) {
+    if (kIsWeb) {
+      final blob = html.Blob([csvContent], 'text/csv;charset=utf-8');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'danh_sach_nhan_vien_${DateTime.now().millisecondsSinceEpoch}.csv')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      // For mobile/desktop, use clipboard as fallback
+      Clipboard.setData(ClipboardData(text: csvContent));
+    }
+  }
+
   // Mở Form Thêm hoặc Sửa Nhân Viên
   void _openEmployeeForm(BuildContext context, {NhanVien? employee}) {
     showDialog(
@@ -167,6 +183,27 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Đã sao chép nội dung CSV vào bộ nhớ tạm (Clipboard)!'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            icon: const Icon(Icons.download),
+            label: const Text('Tải xuống'),
+            onPressed: () {
+              _downloadCSV(csvContent);
+              if (ctx.mounted) {
+                Navigator.of(ctx).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Đang tải xuống file CSV...'),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
