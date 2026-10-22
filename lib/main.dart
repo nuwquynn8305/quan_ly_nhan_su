@@ -35,6 +35,35 @@ class QuanLyNhanSuApp extends StatelessWidget {
           seedColor: appData.primaryColor,
           brightness: Brightness.light,
         ),
+        // Android Material Design styling
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 4,
+          scrolledUnderElevation: 4,
+        ),
+        cardTheme: const CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          elevation: 8,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: appData.primaryColor,
+          unselectedItemColor: Colors.grey,
+          selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
+        ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
@@ -42,6 +71,35 @@ class QuanLyNhanSuApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: appData.primaryColor,
           brightness: Brightness.dark,
+        ),
+        // Android Material Design styling for dark mode
+        appBarTheme: const AppBarTheme(
+          centerTitle: false,
+          elevation: 4,
+          scrolledUnderElevation: 4,
+        ),
+        cardTheme: const CardThemeData(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(8)),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          elevation: 8,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: const Color(0xFF1E1E1E),
+          selectedItemColor: appData.primaryColor,
+          unselectedItemColor: Colors.grey,
+          selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
         ),
       ),
       builder: (context, child) {
@@ -84,9 +142,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey,
         onTap: (index) {
           setState(() {
             _currentIndex = index;

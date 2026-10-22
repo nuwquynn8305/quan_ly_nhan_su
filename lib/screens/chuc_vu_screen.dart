@@ -142,7 +142,6 @@ class _ChucVuScreenState extends State<ChucVuScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quản lý Chức vụ'),
-        centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openPositionForm(context),

@@ -432,7 +432,6 @@ class _NhanVienScreenState extends State<NhanVienScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Quản lý Nhân viên'),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),

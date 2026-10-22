@@ -151,7 +151,6 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tổng Quan Nhân Sự (Dashboard)'),
-        centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download_outlined),
@@ -167,8 +166,6 @@ class HomeScreen extends StatelessWidget {
           children: [
             // Tiêu đề & Quỹ lương
             Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               color: Theme.of(context).colorScheme.primaryContainer.withAlpha(90),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -257,8 +254,6 @@ class HomeScreen extends StatelessWidget {
 
             // Tiến độ phân công
             Card(
-              elevation: 1.5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -320,8 +315,6 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 10),
 
             Card(
-              elevation: 1.5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -401,8 +394,6 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 10),
 
             Card(
-              elevation: 1.5,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
